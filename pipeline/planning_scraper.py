@@ -1,3 +1,4 @@
+from cProfile import label
 import pandas as pd
 import time
 import random
@@ -14,13 +15,12 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 
-import sys
-sys.path.append('../pipeline')
-from comments_saver import CommentsSaver
-cs = CommentsSaver()
+# import sys
+# sys.path.append('../pipeline')
+# from comments_saver import CommentsSaver
+# cs = CommentsSaver()
 
-class CouncilScraper:
-
+class PlanningScraper:
     def __init__(self):
         pass
 
@@ -31,31 +31,13 @@ class CouncilScraper:
             council (string): London borough council name
 
         Returns:
-            string: URL for council planning application page
+            string: URL for council planning application page 
         """
 
         council = council.lower().strip()
-        url_df = pd.read_csv("../data/example_urls.csv")
+        url_df = pd.read_csv("data/input/example_urls.csv")
         return url_df[url_df["council"] == council]["url"].values[0]
         
-        # if council == "newham":
-        #     return "https://pa.newham.gov.uk/online-applications"
-        # elif council == "southwark":
-        #     return "https://planning.southwark.gov.uk/online-applications"
-        # elif council == "lambeth":
-        #     return "https://planning.lambeth.gov.uk/online-applications"
-        # elif council == "ealing":
-        #     return "https://pam.ealing.gov.uk/online-applications"
-        # elif council == "city of london":
-        #     return "https://www.planning2.cityoflondon.gov.uk/online-applications"
-        # elif council == "bromley":
-        #     return "https://searchapplications.bromley.gov.uk/online-applications"
-        # elif council == "brent":
-        #     return "https://pa.brent.gov.uk/online-applications"
-        # elif council == "barnet":
-        #     return "https://publicaccess.barnet.gov.uk/online-applications"
-        # elif council == 'westminster':
-        #     return "https://idoxpa.westminster.gov.uk/online-applications"
         
     
     def driver_options(os="mac"):
@@ -107,7 +89,7 @@ class CouncilScraper:
 
         wait = WebDriverWait(driver, 10)
 
-        base_url = CouncilScraper.council_web_address(council=council)
+        base_url = PlanningScraper.council_web_address(council=council)
         url = base_url + "/search.do?action=advanced"
 
         driver.get(url)
@@ -144,7 +126,7 @@ class CouncilScraper:
         return application_url
     
 
-    def get_postcode_page(driver, council, postcode):
+    def get_postcode_page(council, postcode):
         """Returns the URL of the planning application page for a given council and postcode.
 
         Args:
@@ -154,13 +136,15 @@ class CouncilScraper:
         Returns:
             string: URL of the planning application page
         """
+        service, options = PlanningScraper.driver_options()
+        driver = webdriver.Chrome(service=service, options=options)
 
         wait = WebDriverWait(driver, 10)
 
-        url = CouncilScraper.council_web_address(council=council)
+        base_url = PlanningScraper.council_web_address(council=council)
         # url = base_url + "/search.do?action=advanced"
 
-        driver.get(url)
+        driver.get(base_url)
 
         # Locate the input field by its ID
         try:
@@ -176,22 +160,14 @@ class CouncilScraper:
         # Press Enter to submit
         input_field.send_keys(Keys.RETURN)
         print(f"Searched for postcode: {postcode}.")
-        time.sleep(random.uniform(4, 10))
 
-        # # Click on the "Details" tab
-        # try:
-        #     details_tab = wait.until(EC.element_to_be_clickable((By.ID, "tab_summary")))
-        #     details_tab.click()
-        # except Exception as e:
-        #     print(f"Error clicking on 'Details' tab: {e}")
-        #     driver.quit()
-        #     return "Address not found"
-
-        postcode_url = driver.current_url
         print("Found URL address")
         time.sleep(random.uniform(2, 5))
 
-        return postcode_url
+        links = driver.find_elements(By.CSS_SELECTOR, "a.summaryLink")
+        detail_urls = [link.get_attribute("href") for link in links]
+
+        return detail_urls
 
 
     def has_comments(driver, url):
@@ -227,78 +203,152 @@ class CouncilScraper:
         
         return False  # Return False if the element is not found
 
+    
+    def get_table_value(driver, label):
+        try:
+            return driver.find_element(
+                By.XPATH,
+                f"//th[normalize-space()='{label}']/following-sibling::td"
+            ).text.strip()
+        except:
+            return None
+
+    def scrape_app_details(urls):
+        """
+        Scrape planning application details for a list of URLs.
+        Returns a dict keyed by reference number.
+        """
+
+        service, options = PlanningScraper.driver_options()
+        driver = webdriver.Chrome(service=service, options=options)
+
+        data = {
+            "reference": [],
+            "url": [],
+            "date_validated": [],
+            "address": [],
+            "description": [],
+            "decision": [],
+            "decision_date": []
+        }
+
+        for url in urls:
+            driver.get(url)
+
+            reference = PlanningScraper.get_table_value(driver, "Reference")
+            if not reference:
+                continue
+
+            data["reference"].append(reference)
+            data["url"].append(url)
+            data["date_validated"].append(
+                PlanningScraper.get_table_value(driver, "Application Validated")
+            )
+            data["address"].append(
+                PlanningScraper.get_table_value(driver, "Address")
+            )
+            data["description"].append(
+                PlanningScraper.get_table_value(driver, "Proposal")
+            )
+            data["decision"].append(
+                PlanningScraper.get_table_value(driver, "Decision")
+            )
+            data["decision_date"].append(
+                PlanningScraper.get_table_value(driver, "Decision Issued Date")
+            )
+
+            time.sleep(random.uniform(1.5, 3.0))
+
+        driver.quit()
+        return data
 
 
-    # def scrape_comments_remote(driver, council, app_id, application_url):
-    #     """Scrapes comments from a given planning application page."""
+        # # try:
+        # #     driver.get(url)
+        # # except WebDriverException as e:
+        # #     if '429' in str(e):
+        # #         print(f"429 Too Many Requests error. Sleeping for 5 minutes.")
+        # #         time.sleep(300)
+        # #         continue  
+        # #     else:
+        # #         print(f"WebDriverException on page {page_number}: {e}")
+        # #         return # Stop scraping
 
-    #     wait = WebDriverWait(driver, 10)
-    #     comment_url = application_url.replace("summary", "neighbourComments")
+        # while True:
+        #     url = f"{comment_url}&neighbourCommentsPager.page={page_number}"
+                
+        #     try:
+        #         driver.get(url)
+        #     except WebDriverException as e:
+        #         if '429' in str(e):
+        #             print(f"429 Too Many Requests error on page {page_number}. Sleeping for 5 minutes.")
+        #             time.sleep(300)
+        #             continue  
+        #         else:
+        #             print(f"WebDriverException on page {page_number}: {e}")
+        #             return number_comments  # Stop scraping
 
-    #     page_number = 1
-    #     number_comments = 0
-    #     max_retries = 1
-    #     retry_count = 0
+        #     try:
+        #         comments = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'comment')))
+        #     except TimeoutException:
+        #         print(f"Timeout: No comments found on page {page_number}. Retrying...")
+        #         retry_count += 1
+        #         if retry_count >= max_retries:
+        #             print(f"Max retries reached. Stopping scraping.")
+        #             return number_comments
+        #         time.sleep(random.uniform(60, 120))
+        #         continue  
 
-    #     while True:
-    #         url = f"{comment_url}&neighbourCommentsPager.page={page_number}"
-            
-    #         try:
-    #             driver.get(url)
-    #         except WebDriverException as e:
-    #             if '429' in str(e):
-    #                 print(f"429 Too Many Requests error on page {page_number}. Sleeping for 5 minutes.")
-    #                 time.sleep(300)
-    #                 continue  
-    #             else:
-    #                 print(f"WebDriverException on page {page_number}: {e}")
-    #                 return number_comments # stop scraping
+        #     retry_count = 0  
 
-    #         try:
-    #             comments = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, 'comment')))
-    #         except TimeoutException:
-    #             print(f"Timeout: No comments found on page {page_number}. Retrying...")
-    #             retry_count += 1
-    #             if retry_count >= max_retries:
-    #                 print(f"Max retries reached. Stopping scraping.")
-    #                 return  number_comments 
-    #             time.sleep(random.uniform(60, 120))
-    #             continue  
+        #     has_new_comments = False  # Track if this page has new comments
 
-    #         retry_count = 0  
+        #     for comment in comments:
+        #         try:
+        #             comment_text = comment.find_element(By.CLASS_NAME, 'comment-text').text.strip()
+        #         except:
+        #             comment_text = "None"
 
-    #         for comment in comments:
-    #             comment_id = app_id + "_" + str(number_comments + 1)
-    #             try:
-    #                 address = comment.find_element(By.CLASS_NAME, 'consultationAddress').text.strip()
-    #             except:
-    #                 address = "None"
+        #         # Create a unique hash for each comment based on its content
+        #         comment_hash = hash((app_id, comment_text))
 
-    #             try:
-    #                 stance = comment.find_element(By.CLASS_NAME, 'consultationStance').text.strip().strip("()")
-    #             except:
-    #                 stance = "None"
+        #         if comment_hash in seen_comments:
+        #             print(f"Duplicate comment detected on page {page_number}, skipping...")
+        #             continue  # Skip duplicate comment
 
-    #             try:
-    #                 date = comment.find_element(By.XPATH, './/h3[contains(text(), "Comment submitted date:")]').text.replace("Comment submitted date:", "").strip()
-    #             except:
-    #                 date = "None"
+        #         seen_comments.add(comment_hash)  # Store the comment hash
+        #         has_new_comments = True  # Mark that new comments were found
+                    
+        #         comment_id = app_id + "_" + str(number_comments + 1)
+                    
+        #         try:
+        #             address = comment.find_element(By.CLASS_NAME, 'consultationAddress').text.strip()
+        #         except:
+        #             address = "None"
 
-    #             try:
-    #                 comment_text = comment.find_element(By.CLASS_NAME, 'comment-text').text.strip()
-    #             except:
-    #                 comment_text = "None"
+        #         try:
+        #             stance = comment.find_element(By.CLASS_NAME, 'consultationStance').text.strip().strip("()")
+        #         except:
+        #             stance = "None"
 
-    #             cs.insert_comment(council, comment_id, app_id, address, stance, date, comment_text)
-    #             number_comments += 1
+        #         try:
+        #             date = comment.find_element(By.XPATH, './/h3[contains(text(), "Comment submitted date:")]').text.replace("Comment submitted date:", "").strip()
+        #         except:
+        #             date = "None"
 
-    #             time.sleep(random.uniform(1, 2))  
+        #         cs.insert_comment(council, comment_id, app_id, address, stance, date, comment_text)
+        #         number_comments += 1
 
-    #         page_number += 1
-    #         time.sleep(random.uniform(5, 10))  
+        #         time.sleep(random.uniform(1, 2))  
 
-    #     # print(f'Finished scraping. Pages: {page_number}, Comments: {number_comments}')
-    #     # return 
+        #     if not has_new_comments:
+        #         print(f"No new comments found on page {page_number}. Stopping pagination.")
+        #         break  # Stop pagination if no new comments appear
+
+        #     page_number += 1
+        #     time.sleep(random.uniform(5, 10))  
+
+        # return number_comments
 
 
     def scrape_comments_remote(driver, council, app_id, application_url):

@@ -1,4 +1,4 @@
-council	url
-newham	https://pa.newham.gov.uk/online-applications
-southwark	https://planning.southwark.gov.uk/online-applications
-lambeth	https://planning.lambeth.gov.uk/online-applications
+council,url
+newham,https://pa.newham.gov.uk/online-applications 
+southwark,https://planning.southwark.gov.uk/online-applications
+lambeth,https://planning.lambeth.gov.uk/online-applications

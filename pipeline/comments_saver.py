@@ -1,4 +1,4 @@
-from db_conn import DBConn
+# from db_conn import DBConn
 import psycopg2
 import pandas as pd
 import time
