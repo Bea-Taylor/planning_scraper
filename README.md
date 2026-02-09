@@ -1,22 +1,20 @@
-# Planning scraper 
+# Planning Scraper 
 
-This is open source code for web-scraping information about planning applications from local authority district planning portal websites. It automates the collection of digital information that is in the public domain. 
+This code provides a pipeline to web-scrape information from local authority district planning portal websites, automating the collation of digital information in the public domain. 
 
 ## Running the code 
 
-You can install all the dependencies you need using the requirments.yml and a conda env. 
+Through experimentation I've found that Selenium and ChromeDriver are the most effective packages for webscraping. In order to install the correct dependencies I would recommend creating a conda virtual env from the requirements.yml file supplied. 
 
-Through experimentation, I've discovered that Selenium and ChromeDriver is the best way to run this code. The code has lots of timed breaks built in to minimise the chance of crashing the websites server. 
+The code has been designed to autmatie scrapign of websites which use the idox backend - which has uniform html formatting. If the plannign website has a different format you will need to update the code accoridngly. To minimise the risk of crashing the websites the code has lots of timed breaks, the does mean that the code takes a little bit longer to run. 
 
 ### Tips 
-Personally I run the scripts from a remote server, and save the data to a remote database. 
-
-You don't need to run it from a remote server, but you will want to run it continously for a while - Linux screen is your friend here! 
+I've been using this code to scrape comments lef ton planning applictaiopns. I'cve foudn the best way to run this code is to provide a datraset of locaitons (planing refs, psotcode, uprns, addresses etc) - and then get the code to cycle through them - saving the results ot a database. I've found the best way to do this us by running the scripts form a remotve server. You don't need to run it from a remote server, but you will want to run it continously for a while - Linux screen is your friend here! 
 
 ## Examples 
 
 There is an example of how to run the code in the Jupyter notebook: `example_scraping.ipynb'. 
 
-## Credit
+-----
 
-If you use my code please cite it! 
+Developed by Bea Taylor and AI4CI. 

@@ -1,5 +1,6 @@
 from cProfile import label
 import pandas as pd
+import numpy as np
 import time
 import random
 import os
@@ -10,7 +11,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import WebDriverException, TimeoutException
+from selenium.common.exceptions import WebDriverException, TimeoutException, NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -126,48 +127,108 @@ class PlanningScraper:
         return application_url
     
 
+    # def get_postcode_page(council, postcode):
+    #     """Returns the URL of the planning application page for a given council and postcode.
+
+    #     Args:
+    #         council (string): London borough council name
+    #         postcode (string): postcode
+
+    #     Returns:
+    #         string: URL of the planning application page
+    #     """
+    #     service, options = PlanningScraper.driver_options()
+    #     driver = webdriver.Chrome(service=service, options=options)
+
+    #     wait = WebDriverWait(driver, 10)
+
+    #     base_url = PlanningScraper.council_web_address(council=council)
+    #     # url = base_url + "/search.do?action=advanced"
+
+    #     driver.get(base_url)
+
+    #     # Locate the input field by its ID
+    #     try:
+    #         input_field = wait.until(EC.presence_of_element_located((By.ID, "simpleSearchString")))
+    #         # Clear any existing text and enter the application reference code
+    #         input_field.clear()
+    #         input_field.send_keys(postcode)
+    #     except Exception as e:
+    #         print(f"Error finding matching postcode: {e}")
+    #         driver.quit()
+    #         return "No applications at postcode found"
+
+    #     # Press Enter to submit
+    #     input_field.send_keys(Keys.RETURN)
+    #     print(f"Searched for postcode: {postcode}.")
+
+    #     print("Found URL address")
+    #     time.sleep(random.uniform(2, 5))
+
+    #     links = driver.find_elements(By.CSS_SELECTOR, "a.summaryLink")
+    #     detail_urls = [link.get_attribute("href") for link in links]
+
+    #     return detail_urls
+    
+
     def get_postcode_page(council, postcode):
-        """Returns the URL of the planning application page for a given council and postcode.
-
-        Args:
-            council (string): London borough council name
-            postcode (string): postcode
-
-        Returns:
-            string: URL of the planning application page
+        """Returns a list of planning application URLs for a given council and postcode,
+        cycling through all result pages.
         """
+
         service, options = PlanningScraper.driver_options()
         driver = webdriver.Chrome(service=service, options=options)
-
         wait = WebDriverWait(driver, 10)
 
         base_url = PlanningScraper.council_web_address(council=council)
-        # url = base_url + "/search.do?action=advanced"
-
         driver.get(base_url)
 
-        # Locate the input field by its ID
         try:
-            input_field = wait.until(EC.presence_of_element_located((By.ID, "simpleSearchString")))
-            # Clear any existing text and enter the application reference code
+            input_field = wait.until(
+                EC.presence_of_element_located((By.ID, "simpleSearchString"))
+            )
             input_field.clear()
             input_field.send_keys(postcode)
+            input_field.send_keys(Keys.RETURN)
         except Exception as e:
             print(f"Error finding matching postcode: {e}")
             driver.quit()
-            return "No applications at postcode found"
+            return []
 
-        # Press Enter to submit
-        input_field.send_keys(Keys.RETURN)
-        print(f"Searched for postcode: {postcode}.")
+        print(f"Searched for postcode: {postcode}")
 
-        print("Found URL address")
-        time.sleep(random.uniform(2, 5))
+        detail_urls = []
 
-        links = driver.find_elements(By.CSS_SELECTOR, "a.summaryLink")
-        detail_urls = [link.get_attribute("href") for link in links]
+        while True:
+            time.sleep(random.uniform(2, 4))
 
+            # ---- collect links on current page ----
+            links = driver.find_elements(By.CSS_SELECTOR, "a.summaryLink")
+            page_urls = [link.get_attribute("href") for link in links]
+            detail_urls.extend(page_urls)
+
+            print(f"Collected {len(page_urls)} links (total: {len(detail_urls)})")
+
+            # ---- try to move to next page ----
+            try:
+                next_button = driver.find_element(
+                    By.XPATH,
+                    "//a[normalize-space()='Next' or contains(@aria-label, 'Next')]"
+                )
+
+                # stop if disabled
+                if "disabled" in next_button.get_attribute("class").lower():
+                    break
+
+                driver.execute_script("arguments[0].click();", next_button)
+
+            except Exception:
+                # no next button → last page
+                break
+
+        driver.quit()
         return detail_urls
+
 
 
     def has_comments(driver, url):
@@ -204,23 +265,363 @@ class PlanningScraper:
         return False  # Return False if the element is not found
 
     
+    # def get_table_value(driver, label):
+    #     try:
+    #         return driver.find_element(
+    #             By.XPATH,
+    #             f"//th[normalize-space()='{label}']/following-sibling::td"
+    #         ).text.strip()
+    #     except:
+    #         return None
+        
+    
     def get_table_value(driver, label):
         try:
-            return driver.find_element(
+            value = driver.find_element(
                 By.XPATH,
                 f"//th[normalize-space()='{label}']/following-sibling::td"
             ).text.strip()
-        except:
-            return None
+            return value if value else np.nan
+        except NoSuchElementException:
+            return np.nan
 
-    def scrape_app_details(urls):
-        """
-        Scrape planning application details for a list of URLs.
-        Returns a dict keyed by reference number.
-        """
+
+    # def scrape_app_details(urls):
+    #     """
+    #     Scrape planning application details for a list of URLs.
+    #     Returns a dict keyed by reference number.
+    #     """
+
+    #     service, options = PlanningScraper.driver_options()
+    #     driver = webdriver.Chrome(service=service, options=options)
+
+    #     data = {
+    #         "reference": [],
+    #         "url": [],
+    #         "date_validated": [],
+    #         "address": [],
+    #         "description": [],
+    #         "decision": [],
+    #         "decision_date": []
+    #     }
+
+    #     for url in urls:
+    #         driver.get(url)
+
+    #         reference = PlanningScraper.get_table_value(driver, "Reference")
+    #         if not reference:
+    #             continue
+
+    #         data["reference"].append(reference)
+    #         data["url"].append(url)
+    #         data["date_validated"].append(
+    #             PlanningScraper.get_table_value(driver, "Application Validated")
+    #         )
+    #         data["address"].append(
+    #             PlanningScraper.get_table_value(driver, "Address")
+    #         )
+    #         data["description"].append(
+    #             PlanningScraper.get_table_value(driver, "Proposal")
+    #         )
+    #         data["decision"].append(
+    #             PlanningScraper.get_table_value(driver, "Decision")
+    #         )
+    #         data["decision_date"].append(
+    #             PlanningScraper.get_table_value(driver, "Decision Issued Date")
+    #         )
+
+    #         time.sleep(random.uniform(1.5, 3.0))
+
+    #     driver.quit()
+    #     return data
+    
+
+    def further_info_url(url):
+        # swap 'summary' for 'details' in the URL to get the page with more info
+        return url.replace("summary", "details")
+    
+
+    def hit_rate_limit(driver):
+        page_text = driver.page_source.lower()
+        return (
+            "too many requests" in page_text
+            or "rate limit" in page_text
+            or "temporarily blocked" in page_text
+        )
+    
+
+    # def scrape_app_further_info(urls):
+    #     service, options = PlanningScraper.driver_options()
+    #     driver = webdriver.Chrome(service=service, options=options)
+
+    #     data = {
+    #         "app type": [],
+    #         "decision": [],
+    #         "actual_decision_level": [],
+    #         "expected_decision_level": []
+    #     }
+
+    #     for url in urls:
+    #         driver.get(PlanningScraper.further_info_url(url))
+
+    #         app_type = PlanningScraper.get_table_value(driver, "Application Type")
+    #         if not app_type:
+    #             continue
+
+    #         data["app type"].append(app_type)
+
+    #         data["decision"].append(
+    #             PlanningScraper.get_table_value(driver, "Decision")
+    #         )
+    #         data["actual_decision_level"].append(
+    #             PlanningScraper.get_table_value(driver, "Actual Decision Level")
+    #         )
+    #         data["expected_decision_level"].append(
+    #             PlanningScraper.get_table_value(driver, "Expected Decision Level")
+    #         )
+
+    #         time.sleep(random.uniform(1.5, 3.0))
+
+    #     driver.quit()
+    #     return data
+
+    # # this function combines the two above to get all the details and further info in one go, keyed by reference number
+    # def scrappy(urls):
+    
+    #     service, options = PlanningScraper.driver_options()
+    #     driver = webdriver.Chrome(service=service, options=options)
+
+    #     data = {
+    #         "reference": [],
+    #         "url": [],
+    #         "date_validated": [],
+    #         "address": [],
+    #         "description": [],
+    #         "decision": [],
+    #         "decision_date": [],
+    #         "app type": [],
+    #         "actual_decision_level": [],
+    #         "expected_decision_level": []
+    #     }
+
+    #     for url in urls:
+    #         driver.get(url)
+
+    #         reference = PlanningScraper.get_table_value(driver, "Reference")
+    #         if not reference:
+    #             continue
+
+    #         data["reference"].append(reference)
+    #         data["url"].append(url)
+    #         data["date_validated"].append(
+    #             PlanningScraper.get_table_value(driver, "Application Validated")
+    #         )
+    #         data["address"].append(
+    #             PlanningScraper.get_table_value(driver, "Address")
+    #         )
+    #         data["description"].append(
+    #             PlanningScraper.get_table_value(driver, "Proposal")
+    #         )
+    #         data["decision"].append(
+    #             PlanningScraper.get_table_value(driver, "Decision")
+    #         )
+    #         data["decision_date"].append(
+    #             PlanningScraper.get_table_value(driver, "Decision Issued Date")
+    #         )
+
+    #         time.sleep(random.uniform(1.5, 3.0))
+
+    #         # get further application info 
+
+    #         driver.get(PlanningScraper.further_info_url(url))
+
+    #         app_type = PlanningScraper.get_table_value(driver, "Application Type")
+    #         if not app_type:
+    #             continue
+
+    #         data["app type"].append(app_type)
+
+    #         data["decision"].append(
+    #             PlanningScraper.get_table_value(driver, "Decision")
+    #         )
+    #         data["actual_decision_level"].append(
+    #             PlanningScraper.get_table_value(driver, "Actual Decision Level")
+    #         )
+    #         data["expected_decision_level"].append(
+    #             PlanningScraper.get_table_value(driver, "Expected Decision Level")
+    #         )
+
+    #         time.sleep(random.uniform(1.5, 3.0))
+
+    #     driver.quit()
+    #     return data
+    
+
+    # def scrappy(urls):
+
+    #     service, options = PlanningScraper.driver_options()
+    #     driver = webdriver.Chrome(service=service, options=options)
+
+    #     data = {
+    #         "reference": [],
+    #         "url": [],
+    #         "date_validated": [],
+    #         "address": [],
+    #         "description": [],
+    #         "decision": [],
+    #         "decision_date": [],
+    #         "app type": [],
+    #         "actual_decision_level": [],
+    #         "expected_decision_level": []
+    #     }
+
+    #     for url in urls:
+    #         driver.get(url)
+
+    #         # --- main page ---
+    #         reference = PlanningScraper.get_table_value(driver, "Reference")
+    #         if not reference:
+    #             continue
+
+    #         data["reference"].append(reference)
+    #         data["url"].append(url)
+    #         data["date_validated"].append(
+    #             PlanningScraper.get_table_value(driver, "Application Validated")
+    #         )
+    #         data["address"].append(
+    #             PlanningScraper.get_table_value(driver, "Address")
+    #         )
+    #         data["description"].append(
+    #             PlanningScraper.get_table_value(driver, "Proposal")
+    #         )
+    #         data["decision"].append(
+    #             PlanningScraper.get_table_value(driver, "Decision")
+    #         )
+    #         data["decision_date"].append(
+    #             PlanningScraper.get_table_value(driver, "Decision Issued Date")
+    #         )
+
+    #         time.sleep(random.uniform(1.5, 3.0))
+
+    #         # --- further info page ---
+    #         driver.get(PlanningScraper.further_info_url(url))
+
+    #         data["app type"].append(
+    #             PlanningScraper.get_table_value(driver, "Application Type")
+    #         )
+    #         data["actual_decision_level"].append(
+    #             PlanningScraper.get_table_value(driver, "Actual Decision Level")
+    #         )
+    #         data["expected_decision_level"].append(
+    #             PlanningScraper.get_table_value(driver, "Expected Decision Level")
+    #         )
+
+    #         time.sleep(random.uniform(1.5, 3.0))
+
+    #     driver.quit()
+    #     return data
+
+
+
+    # def scrappy(urls):
+
+    #     service, options = PlanningScraper.driver_options()
+    #     driver = webdriver.Chrome(service=service, options=options)
+    #     wait = WebDriverWait(driver, 10) 
+
+    #     data = {
+    #         "reference": [],
+    #         "url": [],
+    #         "date_validated": [],
+    #         "address": [],
+    #         "description": [],
+    #         "decision": [],
+    #         "decision_date": [],
+    #         "app type": [],
+    #         "actual_decision_level": [],
+    #         "expected_decision_level": []
+    #     }
+
+    #     for url in urls:
+    #         print(f"Scraping URL: {url}")
+    #         print('URL number: ' + str(urls.index(url) + 1) + ' out of ' + str(len(urls)))
+    #         try:
+    #             # load url 
+    #             driver.get(url)
+    #             # time.sleep(random.uniform(1, 3))
+
+    #             # reference = PlanningScraper.get_table_value(driver, "Reference")
+    #             reference = wait.until(lambda d: PlanningScraper.get_table_value(d, "Reference"))
+
+    #             # if reference missing, skip this URL entirely
+    #             if pd.isna(reference):
+    #                 print(f"Reference number missing for {url}, skipping.")
+    #                 continue
+                
+    #             # get basic application information
+    #             date_validated = PlanningScraper.get_table_value(driver, "Application Validated")
+    #             address = PlanningScraper.get_table_value(driver, "Address")
+    #             description = PlanningScraper.get_table_value(driver, "Proposal")
+    #             decision = PlanningScraper.get_table_value(driver, "Decision")
+    #             decision_date = PlanningScraper.get_table_value(driver, "Decision Issued Date")
+    #             print(f"Scraped main page for {reference}")
+
+    #             time.sleep(random.uniform(1.5, 9.0))
+
+    #             # get further application info
+    #             try:
+    #                 driver.get(PlanningScraper.further_info_url(url))
+    #                 time.sleep(random.uniform(1, 3))
+
+    #                 app_type = PlanningScraper.get_table_value(driver, "Application Type")
+    #                 actual_level = PlanningScraper.get_table_value(driver, "Actual Decision Level")
+    #                 expected_level = PlanningScraper.get_table_value(driver, "Expected Decision Level")
+    #                 print(f"Scraped further info page for {reference}")
+
+    #             except Exception as e:
+    #                 print(f"Further info failed for {url}: {e}")
+    #                 app_type = np.nan
+    #                 actual_level = np.nan
+    #                 expected_level = np.nan
+
+
+    #         except Exception as e:
+    #             print(f"Main page failed for {url}: {e}")
+
+    #             # append a fully-empty row so the df stays rectangular
+    #             reference = np.nan
+    #             date_validated = np.nan
+    #             address = np.nan
+    #             description = np.nan
+    #             decision = np.nan
+    #             decision_date = np.nan
+    #             app_type = np.nan
+    #             actual_level = np.nan
+    #             expected_level = np.nan
+
+    #         # ---------- single append point ----------
+    #         data["reference"].append(reference)
+    #         data["url"].append(url)
+    #         data["date_validated"].append(date_validated)
+    #         data["address"].append(address)
+    #         data["description"].append(description)
+    #         data["decision"].append(decision)
+    #         data["decision_date"].append(decision_date)
+    #         data["app type"].append(app_type)
+    #         data["actual_decision_level"].append(actual_level)
+    #         data["expected_decision_level"].append(expected_level)
+
+    #         time.sleep(random.uniform(1.5, 9.0))
+
+    #     driver.quit()
+    #     return data
+
+
+    def scrape_app_details(urls, max_retries=3):
 
         service, options = PlanningScraper.driver_options()
         driver = webdriver.Chrome(service=service, options=options)
+        wait = WebDriverWait(driver, 10)
 
         data = {
             "reference": [],
@@ -229,38 +630,96 @@ class PlanningScraper:
             "address": [],
             "description": [],
             "decision": [],
-            "decision_date": []
+            "decision_date": [],
+            "app type": [],
+            "actual_decision_level": [],
+            "expected_decision_level": []
         }
 
-        for url in urls:
-            driver.get(url)
+        for i, url in enumerate(urls, start=1):
+            print(f"Scraping URL {i} of {len(urls)}: {url}")
 
-            reference = PlanningScraper.get_table_value(driver, "Reference")
-            if not reference:
-                continue
+            success = False
 
+            for attempt in range(1, max_retries + 1):
+                try:
+                    print(f"  Attempt {attempt}/{max_retries}")
+
+                    # scrape main page
+                    driver.get(url)
+
+                    reference = wait.until(
+                        lambda d: PlanningScraper.get_table_value(d, "Reference")
+                    )
+
+                    if pd.isna(reference):
+                        raise ValueError("Reference missing")
+
+                    date_validated = PlanningScraper.get_table_value(driver, "Application Validated")
+                    address = PlanningScraper.get_table_value(driver, "Address")
+                    description = PlanningScraper.get_table_value(driver, "Proposal")
+                    decision = PlanningScraper.get_table_value(driver, "Decision")
+                    decision_date = PlanningScraper.get_table_value(driver, "Decision Issued Date")
+
+                    print(f"  Scraped main page for {reference}")
+
+                    time.sleep(random.uniform(1.5, 5.0))
+
+                    # scrape further info page
+                    try:
+                        driver.get(PlanningScraper.further_info_url(url))
+                        time.sleep(random.uniform(1, 3))
+
+                        app_type = PlanningScraper.get_table_value(driver, "Application Type")
+                        actual_level = PlanningScraper.get_table_value(driver, "Actual Decision Level")
+                        expected_level = PlanningScraper.get_table_value(driver, "Expected Decision Level")
+
+                        print(f"  Scraped further info page for {reference}")
+
+                    except Exception as e:
+                        print(f"  Further info failed: {e}")
+                        app_type = np.nan
+                        actual_level = np.nan
+                        expected_level = np.nan
+
+                    success = True
+                    break  
+
+                except Exception as e:
+                    print(f"  Attempt {attempt} failed: {e}")
+                    time.sleep(random.uniform(120, 300))
+
+            # if all attempts failed, append NaNs for this URL and move on
+            if not success:
+                print(f"  All retries failed for {url}, recording NaNs")
+
+                reference = np.nan
+                date_validated = np.nan
+                address = np.nan
+                description = np.nan
+                decision = np.nan
+                decision_date = np.nan
+                app_type = np.nan
+                actual_level = np.nan
+                expected_level = np.nan
+
+            # ---------- single append point ----------
             data["reference"].append(reference)
             data["url"].append(url)
-            data["date_validated"].append(
-                PlanningScraper.get_table_value(driver, "Application Validated")
-            )
-            data["address"].append(
-                PlanningScraper.get_table_value(driver, "Address")
-            )
-            data["description"].append(
-                PlanningScraper.get_table_value(driver, "Proposal")
-            )
-            data["decision"].append(
-                PlanningScraper.get_table_value(driver, "Decision")
-            )
-            data["decision_date"].append(
-                PlanningScraper.get_table_value(driver, "Decision Issued Date")
-            )
+            data["date_validated"].append(date_validated)
+            data["address"].append(address)
+            data["description"].append(description)
+            data["decision"].append(decision)
+            data["decision_date"].append(decision_date)
+            data["app type"].append(app_type)
+            data["actual_decision_level"].append(actual_level)
+            data["expected_decision_level"].append(expected_level)
 
-            time.sleep(random.uniform(1.5, 3.0))
+            time.sleep(random.uniform(2, 8))
 
         driver.quit()
         return data
+
 
 
         # # try:
@@ -442,27 +901,27 @@ class PlanningScraper:
 
 
 
-    def get_application_comments(os, council, app_id):
+    # def get_application_comments(os, council, app_id):
 
-        # Set up Selenium WebDriver
-        service, options = CouncilScraper.driver_options(os)
-        driver = webdriver.Chrome(service=service, options=options)
+    #     # Set up Selenium WebDriver
+    #     service, options = CouncilScraper.driver_options(os)
+    #     driver = webdriver.Chrome(service=service, options=options)
 
-        # Get the application page URL
-        application_url = CouncilScraper.get_application_page(driver, council, app_id)  
+    #     # Get the application page URL
+    #     application_url = CouncilScraper.get_application_page(driver, council, app_id)  
 
-        if CouncilScraper.has_comments(driver, application_url):
-            print("Comments found for the given application.")
-            number_comments = CouncilScraper.scrape_comments_remote(driver, council, app_id, application_url)
+    #     if CouncilScraper.has_comments(driver, application_url):
+    #         print("Comments found for the given application.")
+    #         number_comments = CouncilScraper.scrape_comments_remote(driver, council, app_id, application_url)
 
-            driver.stop_client()
-            driver.close()
-            driver.quit()
-            return number_comments
+    #         driver.stop_client()
+    #         driver.close()
+    #         driver.quit()
+    #         return number_comments
         
-        else:
-            print("No comments found for the given application.")
-            driver.stop_client()
-            driver.close()
-            driver.quit()
-            return 0
+    #     else:
+    #         print("No comments found for the given application.")
+    #         driver.stop_client()
+    #         driver.close()
+    #         driver.quit()
+    #         return 0
