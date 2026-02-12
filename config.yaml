@@ -1,0 +1,32 @@
+scraper:
+  delays:
+    min: 2
+    max: 8
+    page_load: 4-10
+
+  timeouts:
+    element_wait: 10
+    page_load: 30
+
+  retries:
+    max_attempts: 3
+    backoff_min: 120
+    backoff_max: 300
+
+  browser:
+    headless: true
+    disable_images: true
+    disable_javascript: true
+
+geocoding:
+  min_delay: 2.0
+  max_delay: 3.0
+  max_workers: 4
+  batch_size: 20
+
+  bounding_box:
+    greater_london: [51.2867602, -0.5103751, 51.6918741, 0.3340155]
+
+paths:
+  council_urls: "data/input/example_urls.csv"
+  output_data: "data/output"
