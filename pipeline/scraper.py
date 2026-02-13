@@ -3,6 +3,7 @@
 import time
 import random
 import numpy as np
+import pandas as pd
 from typing import List, Dict, Any, Optional
 
 from selenium import webdriver
@@ -15,6 +16,28 @@ from .config import Config
 from .browser import setup_driver, check_rate_limit
 from .navigation import build_further_info_url, build_comments_url
 from .parsers import parse_application_details, parse_further_info
+
+
+def is_missing(value: Any) -> bool:
+    """Check if a value is missing (None, empty string, or NaN).
+    
+    Args:
+        value: Value to check
+        
+    Returns:
+        True if value is missing, False otherwise
+    """
+    if value is None:
+        return True
+    if isinstance(value, str) and value.strip() == "":
+        return True
+    if isinstance(value, float) and np.isnan(value):
+        return True
+    # Use pandas for robust NaN checking
+    try:
+        return pd.isna(value)
+    except:
+        return False
 
 
 class ApplicationScraper:
@@ -73,7 +96,8 @@ class ApplicationScraper:
                             lambda d: parse_application_details(d)["reference"]
                         )
                         
-                        if not reference or np.isnan(reference):
+                        # Check if reference is missing
+                        if is_missing(reference):
                             raise ValueError("Reference missing")
                         
                         # Parse main details
