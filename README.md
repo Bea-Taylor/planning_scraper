@@ -4,26 +4,22 @@ A lightweight Python module for scraping planning application data from local pl
 
 ## Set-up 
 
-There are three simple steps to get the repo up and running!
+There are four simple steps to get the repo up and running!
 
 1. Clone/download the repository
-2. Install requirements
-
-  - ### Install dependencies
-  **Conda (preferred):**
+2. Install dependencies
+  *Conda (preferred):*
   ```bash
   conda env create -f environment.yml
   conda activate web_scrape_env
   ```
   The virtual environment ensures you have the right Selenium and ChromeDriver packages installed - these are necessary for the webscraping. 
-
-  - ### Install ChromeDriver
-  **macOS:**
+3. Install ChromeDriver
+  *macOS:*
   ```bash
   brew install chromedriver
   ```
-
-3. Import from the `planning_scraper/` directory
+4. Import from the `planning_scraper/` directory
 
 ## Usage
 
