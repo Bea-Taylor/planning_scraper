@@ -9,25 +9,25 @@ There are three simple steps to get the repo up and running!
 1. Clone/download the repository
 2. Install requirements
 
-### Install dependencies
-**Conda (preferred):**
-```bash
-conda env create -f environment.yml
-conda activate web_scrape_env
-```
-The virtual environment ensures you have the right Selenium and ChromeDriver packages installed - these are necessary for the webscraping. 
+  - ### Install dependencies
+  **Conda (preferred):**
+  ```bash
+  conda env create -f environment.yml
+  conda activate web_scrape_env
+  ```
+  The virtual environment ensures you have the right Selenium and ChromeDriver packages installed - these are necessary for the webscraping. 
 
-### Install ChromeDriver
-**macOS:**
-```bash
-brew install chromedriver
-```
+  - ### Install ChromeDriver
+  **macOS:**
+  ```bash
+  brew install chromedriver
+  ```
 
 3. Import from the `planning_scraper/` directory
 
 ## Usage
 
-There is an example of how to run the code in the Jupyter notebook: `example_scraping.ipynb'. 
+There is an example of how to run the code in the Jupyter notebook: [example_scraping.ipynb](./example_scraping.ipynb). 
 
 ## Project architecture
 
@@ -121,4 +121,4 @@ The code has been designed to automate scraping of council websites which use th
 ## License
 Feel free to use and modify!
 
-Developed by Bea Taylor. I used Claude code to refactor parts of this repo - please create issues/pull requests for any problems - I would appreciate the feedback!  
+Developed by [Bea Taylor](https://profiles.ucl.ac.uk/82618-beatrice-taylor). I used Claude code to refactor parts of this repo - please create issues/pull requests for any problems - I would appreciate the feedback!  
