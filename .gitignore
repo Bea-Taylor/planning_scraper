@@ -1,0 +1,7 @@
+# Data (keep structure of files, ignore content)
+data/output/*
+!data/output/.gitkeep
+
+# Selenium
+geckodriver.log
+chromedriver.log

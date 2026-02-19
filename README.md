@@ -1,218 +1,124 @@
 # Planning Scraper 
 
-A modular Python package for scraping planning application data from local authority district planning portal websites, automating the collation of digital information in the public domain. 
+A lightweight Python module for scraping planning application data from local planning authority websites, automating the collation of digital information in the public domain. 
 
 ## Set-up 
 
-First create a new conda env using the file: ''. 
+There are three simple steps to get the repo up and running!
+
+1. Clone/download the repository
+2. Install requirements
+
+### Install dependencies
+**Conda (preferred):**
+```bash
+conda env create -f environment.yml
+conda activate web_scrape_env
+```
 The virtual environment ensures you have the right Selenium and ChromeDriver packages installed - these are necessary for the webscraping. 
 
-Activate your virtual environment, navigate to planning scraper and pip install:
-
+### Install ChromeDriver
+**macOS:**
 ```bash
-pip install -e . 
+brew install chromedriver
 ```
 
-## Notes on web-scraping
-
-Through experimentation I've found that Selenium and ChromeDriver are the most effective packages for webscraping. In order to install the correct dependencies I would recommend creating a conda virtual env from the requirements.yml file supplied. 
-
-The code has been designed to autmatie scrapign of websites which use the idox backend - which has uniform html formatting. If the plannign website has a different format you will need to update the code accoridngly. To minimise the risk of crashing the websites the code has lots of timed breaks, the does mean that the code takes a little bit longer to run. 
+3. Import from the `planning_scraper/` directory
 
 ## Usage
 
 There is an example of how to run the code in the Jupyter notebook: `example_scraping.ipynb'. 
 
-## Tips 
-I've been using this code to scrape comments lef ton planning applications. I've found the best way to run this code is to provide a datraset of locations (planning refs, postcodes, uprns, addresses etc) - and then get the code to cycle through them - saving the results ot a database. I've found the best way to do this us by running the scripts form a remotve server. You don't need to run it from a remote server, but you will want to run it continously for a while - Linux screen is your friend here! 
-
----------
-
 ## Project architecture
 
-### Project Structure
-
+```
 planning-scraper/
-│
 ├── README.md
 ├── requirements.txt
 ├── example_scraping.ipynb
 ├── .gitignore
 │
-├── scraper/
+├── planning_scraper/
 │   ├── __init__.py
-│   ├── driver.py          # driver_options(), waits, user-agent
-│   ├── planning.py        # scrappy(), get_postcode_page()
-│   ├── utils.py           # rate-limit detection, retries, helpers
-│   └── constants.py       # council URLs, XPaths, selectors
+│   ├── driver.py          # WebDriver setup
+│   ├── scraper.py         # Main scraping functions
+│   ├── utils.py           # Helper utilities
+│   └── geolocator.py      # Address processing
 │
 └── data/
-    └── input
-        └── sample_output.csv
-    └── output
-
-
-<!-- ### **browser.py** 
-- `setup_driver(os_type, headless)` - Configure and return Chrome WebDriver
-- `BrowserManager` - Context manager for automatic cleanup
-- `check_rate_limit(driver)` - Detect rate limiting
-
-**Purpose:** All browser/WebDriver configuration and lifecycle management
-
-### **config.py** 
-- `Config` class - Centralized configuration
-- `get_council_url(council)` - Retrieve council URLs
-- `validate_config()` - Validate configuration files
-
-**Purpose:** Configuration management and validation
-
-### **navigation.py** 
-- `get_application_page(driver, council, app_id)` - Navigate to application page
-- `get_postcode_page(council, postcode)` - Get all URLs for a postcode
-- `has_comments(driver, url)` - Check if page has comments
-- `build_further_info_url(base_url)` - Generate details page URL
-- `build_comments_url(base_url, page_number)` - Generate comments page URL
-
-**Purpose:** All URL navigation and page interaction logic
-
-### **parsers.py**
-- `get_table_value(driver, label)` - Extract table cell value
-- `parse_application_details(driver)` - Parse main application data
-- `parse_further_info(driver)` - Parse additional details
-- `get_comments_count(driver)` - Extract comment count
-
-**Purpose:** HTML parsing and data extraction
-
-### **scraper.py**
-- `ApplicationScraper` - Main scraper class
-- `scrape_app_details(urls)` - Scrape multiple applications
-- `scrape_comments(...)` - Scrape comments from application
-
-**Purpose:** High-level scraping orchestration and retry logic
-
-### **utils.py** 
-- `retry_with_backoff(func, ...)` - Retry with exponential backoff
-- `random_sleep(min, max)` - Sleep random duration
-- `sanitize_filename(filename)` - Clean filenames
-- `format_postcode(postcode)` - Format UK postcodes
-- `validate_app_id(app_id)` - Validate application IDs
-- `chunk_list(items, chunk_size)` - Split lists into chunks
-- `log_scraping_stats(...)` - Log scraping statistics
-
-**Purpose:** Reusable utility functions -->
-
-
-
-### Basic Application Scraping
-
-```python
-from pipeline import ApplicationScraper
-
-# Initialize scraper
-scraper = ApplicationScraper(os_type="mac", max_retries=3)
-
-# Scrape applications
-urls = [
-    "https://example.com/application/123",
-    "https://example.com/application/456"
-]
-
-data = scraper.scrape_app_details(urls)
-
-# Convert to DataFrame
-import pandas as pd
-df = pd.DataFrame(data)
+    ├── input/
+    │   └── example_urls.csv
+    └── output/
 ```
 
-### Using Context Manager for Browser
+## Functions
 
-```python
-from pipeline import BrowserManager, get_application_page
+### `scraper.py`
+Main scraping functions. 
 
-with BrowserManager(os_type="mac") as driver:
-    url = get_application_page(driver, "Westminster", "APP-001")
-    print(f"Application URL: {url}")
-```
+- **`get_postcode_page(council, postcode, os_type="mac")`**
+  - Search for all applications in a postcode
+  - Returns list of URLs
 
-### Postcode Search
+- **`scrape_app_details(urls, os_type="mac", max_retries=3)`**
+  - Scrape details from application URLs
+  - Returns dictionary of data
 
-```python
-from pipeline import get_postcode_page
+- **`scrape_comments(driver, council, app_id, url, comments_saver=None)`**
+  - Scrape comments from an application
+  - Returns count of comments
 
-# Get all applications for a postcode
-urls = get_postcode_page("Westminster", "SW1A 1AA")
-print(f"Found {len(urls)} applications")
-```
+### `geolocator.py`
+Address processing and geocoding utilities.
 
-### Checking for Comments
+- **`extract_postcode(address)`**
+  - Extract UK postcode from address string
 
-```python
-from pipeline import BrowserManager, has_comments
+- **`parse_address(address_string)`**
+  - Parse address into components (street, city, postcode)
 
-with BrowserManager() as driver:
-    if has_comments(driver, application_url):
-        print("This application has comments")
-```
+- **`clean_address(address)`**
+  - Clean and standardise address string
 
-### Scraping Comments
+- **`process_address_dataframe(df, address_column='address')`**
+  - Process all addresses in a DataFrame
 
-```python
-from pipeline import ApplicationScraper, BrowserManager
+- **`calculate_distance(lat1, lon1, lat2, lon2)`**
+  - Calculate distance between coordinates (km)
 
-scraper = ApplicationScraper()
+### `driver.py`
+WebDriver setup and configuration.
 
-with BrowserManager() as driver:
-    num_comments = scraper.scrape_comments(
-        driver=driver,
-        council="Westminster",
-        app_id="APP-001",
-        application_url="https://example.com/app/summary",
-        comments_saver=None  # Or pass CommentsSaver instance
-    )
-    print(f"Scraped {num_comments} comments")
-```
+- **`setup_driver(os_type="mac", headless=True)`**
+  - Set up Chrome WebDriver
 
-## Configuration
+### `utils.py`
+Utility functions for the scraper.
 
-The package expects a CSV file at `data/input/example_urls.csv` with council URLs:
+- **`get_council_url(council)`**
+  - Get council URL from CSV
 
-```csv
-council,url
-westminster,https://idoxpa.westminster.gov.uk/online-applications
-camden,https://opendata.camden.gov.uk/...
-```
+- **`check_rate_limit(driver)`**
+  - Check if rate limited
 
-### Customizing Configuration
+- **`is_missing(value)`**
+  - Check if value is missing/NaN
 
-```python
-from pipeline.config import Config
+- **`get_table_value(driver, label)`**
+  - Extract value from HTML table
 
-# Change default settings
-Config.DEFAULT_WAIT_TIMEOUT = 15
-Config.MAX_RETRIES = 5
-Config.RATE_LIMIT_SLEEP = 600  # 10 minutes
-```
+## Tips 
 
-## Testing
+**Leave the code running**
+I've been using this code to scrape comments left on planning applications. I've found the best way to run this code is to provide a dataset of locations (planning refs, postcodes, uprns, addresses etc) - and then get the code to cycle through them - saving the results to a database. The code takes a while to run as it has lots of pauses built in to avoid crashing the host websites. Since  I like to be able to abandon my laptop I've been executing the code from a remote server. I've found [linux screen](https://linuxize.com/post/how-to-use-linux-screen/) really helpful for this. 
 
-Each module can be tested independently:
+**Use Selenium and ChromeDriver**
+Through experimentation I've found that Selenium and ChromeDriver are the most effective packages for webscraping. In order to install the correct dependencies I would recommend creating a conda virtual env from the enviornment.yml file supplied. 
 
-```python
-# Test browser setup
-from pipeline.browser import setup_driver
-driver = setup_driver("mac")
-assert driver is not None
-driver.quit()
+**Check the website html**
+The code has been designed to automate scraping of council websites which use the idox backend - since this has uniform html formatting. If the planning website you're trying to scrape has a different format you will need to update the code accordingly.
 
-# Test parsers
-from pipeline.parsers import parse_application_details
-with BrowserManager() as driver:
-    driver.get(url)
-    details = parse_application_details(driver)
-    assert "reference" in details
-```
+## License
+Feel free to use and modify!
 
------------
-
-Developed by Bea Taylor(URL) and AI4CI(URL). We used Claude code to refactor this repo - please create issues/pull requests for any problems - we would appreciate the feedback.  
-
+Developed by Bea Taylor. I used Claude code to refactor parts of this repo - please create issues/pull requests for any problems - I would appreciate the feedback!  
