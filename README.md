@@ -8,13 +8,16 @@ There are four simple steps to get the repo up and running!
 
 1. Clone/download the repository
 2. Install dependencies
+  
   *Conda (preferred):*
   ```bash
   conda env create -f environment.yml
   conda activate web_scrape_env
   ```
-  The virtual environment ensures you have the right Selenium and ChromeDriver packages installed - these are necessary for the webscraping. 
+  The virtual environment ensures you have the right packages installed!
+
 3. Install ChromeDriver
+  
   *macOS:*
   ```bash
   brew install chromedriver
@@ -109,7 +112,7 @@ Utility functions for the scraper.
 I've been using this code to scrape comments left on planning applications. I've found the best way to run this code is to provide a dataset of locations (planning refs, postcodes, uprns, addresses etc) - and then get the code to cycle through them - saving the results to a database. The code takes a while to run as it has lots of pauses built in to avoid crashing the host websites. Since  I like to be able to abandon my laptop I've been executing the code from a remote server. I've found [linux screen](https://linuxize.com/post/how-to-use-linux-screen/) really helpful for this. 
 
 **Use Selenium and ChromeDriver**
-Through experimentation I've found that Selenium and ChromeDriver are the most effective packages for webscraping. In order to install the correct dependencies I would recommend creating a conda virtual env from the enviornment.yml file supplied. 
+Through experimentation I've found that [Selenium](https://www.selenium.dev/) and [ChromeDriver](https://developer.chrome.com/docs/chromedriver/get-started) are the most effective packages for webscraping. In order to install the correct dependencies I would recommend creating a conda virtual env from the enviornment.yml file supplied. 
 
 **Check the website html**
 The code has been designed to automate scraping of council websites which use the idox backend - since this has uniform html formatting. If the planning website you're trying to scrape has a different format you will need to update the code accordingly.
