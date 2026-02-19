@@ -5,3 +5,6 @@ data/output/*
 # Selenium
 geckodriver.log
 chromedriver.log
+
+# OS files
+.DS_Store
