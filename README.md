@@ -2,28 +2,57 @@
 
 A modular Python package for scraping planning application data from local authority district planning portal websites, automating the collation of digital information in the public domain. 
 
-## Project Structure
+## Set-up 
 
+First create a new conda env using the file: ''. 
+The virtual environment ensures you have the right Selenium and ChromeDriver packages installed - these are necessary for the webscraping. 
+
+Activate your virtual environment, navigate to planning scraper and pip install:
+
+```bash
+pip install -e . 
 ```
-pipeline/
-├── __init__.py           # Package initialization and exports
-├── config.py             # Configuration management and settings
-├── browser.py            # Browser setup and WebDriver management
-├── navigation.py         # URL navigation and page interactions
-├── parsers.py            # HTML parsing and data extraction
-├── scraper.py            # Core scraping orchestration
-├── utils.py              # Helper functions and utilities
-└── geo_locater.py        # Geographic location utilities (existing)
-```
-## Running the code 
+
+## Notes on web-scraping
 
 Through experimentation I've found that Selenium and ChromeDriver are the most effective packages for webscraping. In order to install the correct dependencies I would recommend creating a conda virtual env from the requirements.yml file supplied. 
 
 The code has been designed to autmatie scrapign of websites which use the idox backend - which has uniform html formatting. If the plannign website has a different format you will need to update the code accoridngly. To minimise the risk of crashing the websites the code has lots of timed breaks, the does mean that the code takes a little bit longer to run. 
 
-## Architecture
+## Usage
 
-### **browser.py** 
+There is an example of how to run the code in the Jupyter notebook: `example_scraping.ipynb'. 
+
+## Tips 
+I've been using this code to scrape comments lef ton planning applications. I've found the best way to run this code is to provide a datraset of locations (planning refs, postcodes, uprns, addresses etc) - and then get the code to cycle through them - saving the results ot a database. I've found the best way to do this us by running the scripts form a remotve server. You don't need to run it from a remote server, but you will want to run it continously for a while - Linux screen is your friend here! 
+
+---------
+
+## Project architecture
+
+### Project Structure
+
+planning-scraper/
+│
+├── README.md
+├── requirements.txt
+├── example_scraping.ipynb
+├── .gitignore
+│
+├── scraper/
+│   ├── __init__.py
+│   ├── driver.py          # driver_options(), waits, user-agent
+│   ├── planning.py        # scrappy(), get_postcode_page()
+│   ├── utils.py           # rate-limit detection, retries, helpers
+│   └── constants.py       # council URLs, XPaths, selectors
+│
+└── data/
+    └── input
+        └── sample_output.csv
+    └── output
+
+
+<!-- ### **browser.py** 
 - `setup_driver(os_type, headless)` - Configure and return Chrome WebDriver
 - `BrowserManager` - Context manager for automatic cleanup
 - `check_rate_limit(driver)` - Detect rate limiting
@@ -70,11 +99,9 @@ The code has been designed to autmatie scrapign of websites which use the idox b
 - `chunk_list(items, chunk_size)` - Split lists into chunks
 - `log_scraping_stats(...)` - Log scraping statistics
 
-**Purpose:** Reusable utility functions
+**Purpose:** Reusable utility functions -->
 
-## Usage
 
-There is an example of how to run the code in the Jupyter notebook: `example_scraping.ipynb'. 
 
 ### Basic Application Scraping
 
@@ -185,10 +212,7 @@ with BrowserManager() as driver:
     assert "reference" in details
 ```
 
-## Tips 
-I've been using this code to scrape comments lef ton planning applictaiopns. I'cve foudn the best way to run this code is to provide a datraset of locaitons (planing refs, psotcode, uprns, addresses etc) - and then get the code to cycle through them - saving the results ot a database. I've found the best way to do this us by running the scripts form a remotve server. You don't need to run it from a remote server, but you will want to run it continously for a while - Linux screen is your friend here! 
-
 -----------
 
-Developed by Bea Taylor and AI4CI. 
+Developed by Bea Taylor(URL) and AI4CI(URL). We used Claude code to refactor this repo - please create issues/pull requests for any problems - we would appreciate the feedback.  
 
